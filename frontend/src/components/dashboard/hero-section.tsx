@@ -1,31 +1,95 @@
-import { UploadCloud, Link, FileText, Mic } from "lucide-react"
+"use client"
+
+import { UploadCloud, Link as LinkIcon, FileText, Mic, Loader2 } from "lucide-react"
+import { useState, useRef } from "react"
 
 export function HeroSection() {
+  const [isUploading, setIsUploading] = useState(false)
+  const [isGenerating, setIsGenerating] = useState(false)
+  const [statusText, setStatusText] = useState("")
+  
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setIsUploading(true)
+    setStatusText("Uploading & Extracting Text...")
+    
+    const formData = new FormData()
+    formData.append("file", file)
+
+    try {
+      const res = await fetch("http://localhost:8000/upload", {
+        method: "POST",
+        body: formData,
+      })
+      const data = await res.json()
+      
+      if (data.id) {
+        setStatusText("Driving 7-Way AI Generation...")
+        setIsGenerating(true)
+        
+        await fetch(`http://localhost:8000/generate/${data.id}`, { method: "POST" })
+        setStatusText("Complete!")
+        setTimeout(() => {
+            setIsUploading(false)
+            setIsGenerating(false)
+            setStatusText("")
+        }, 2000)
+      }
+    } catch (err) {
+      console.error(err)
+      setStatusText("Failed.")
+      setTimeout(() => setIsUploading(false), 2000)
+    }
+  }
+
   const cards = [
     {
       title: "Upload PDF/Docs",
       icon: <UploadCloud className="w-6 h-6 text-blue-400" />,
       description: "Import syllabus or readings",
+      onClick: () => fileInputRef.current?.click()
     },
     {
       title: "Link Videos/Articles",
-      icon: <Link className="w-6 h-6 text-emerald-400" />,
+      icon: <LinkIcon className="w-6 h-6 text-emerald-400" />,
       description: "Paste an external URL",
+      onClick: () => alert("YouTube link input UI would open here")
     },
     {
       title: "Paste Notes",
       icon: <FileText className="w-6 h-6 text-purple-400" />,
       description: "Copy text directly",
+      onClick: () => alert("Text area input UI would open here")
     },
     {
       title: "Record Audio",
       icon: <Mic className="w-6 h-6 text-orange-400" />,
       description: "Capture lectures live",
+      onClick: () => fileInputRef.current?.click() // Route to file input for audio file for MVP
     },
   ]
 
   return (
-    <section>
+    <section className="relative">
+      <input 
+        type="file" 
+        className="hidden" 
+        ref={fileInputRef} 
+        onChange={handleFileChange}
+        accept=".pdf,.mp3,.wav,.m4a,.mp4,.txt"
+      />
+      
+      {isUploading && (
+        <div className="absolute inset-0 z-10 bg-background/50 backdrop-blur-sm rounded-xl flex flex-col items-center justify-center border border-white/10">
+          <Loader2 className="w-10 h-10 animate-spin text-blue-400 mb-4" />
+          <p className="text-lg font-medium">{statusText}</p>
+        </div>
+      )}
+
       <div className="mb-8">
         <h1 className="text-4xl md:text-5xl font-bold tracking-tight mb-4">
           Time to <span className="gradient-text">study smarter</span>
@@ -39,6 +103,7 @@ export function HeroSection() {
         {cards.map((card, idx) => (
           <button 
             key={idx} 
+            onClick={card.onClick}
             className="glass-card text-left p-6 rounded-xl group flex flex-col justify-between min-h-[140px]"
           >
             <div className="mb-4 bg-white/5 w-12 h-12 rounded-lg flex items-center justify-center group-hover:scale-110 group-hover:bg-white/10 transition-all">
