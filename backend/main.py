@@ -8,11 +8,11 @@ import json
 import os
 import httpx
 
-from . import models, database
-from .services.extractors import extract_text_from_pdf, extract_text_from_youtube, extract_text_from_audio
-from .services.ollama_bridge import generate_7_way
-from .services.tts import generate_tts_wav
-from .services import vector_store
+import models, database
+from services.extractors import extract_text_from_pdf, extract_text_from_youtube, extract_text_from_audio
+from services.ollama_bridge import generate_7_way
+from services.tts import generate_tts_wav
+from services import vector_store
 
 class ClarifyRequest(BaseModel):
     text: str
