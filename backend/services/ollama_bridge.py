@@ -61,7 +61,7 @@ async def _generate(model: str, system_prompt: str, content: str, use_json: bool
             logger.error(f"Ollama generation failed: {e}")
             return {} if use_json else f"Generation failed: {str(e)}"
 
-async def generate_7_way(model: str, content: str) -> dict:
+async def generate_7_way_stream(model: str, content: str):
     prompts = {
         "notes": ("You are an expert tutor. Summarize this content into detailed structured notes.", False),
         "flashcards": ("You are a study assistant. Extract flashcards. Respond strictly in JSON format matching { \"flashcards\": [ {\"front\": \"text\", \"back\": \"text\"} ] }.", True),
@@ -73,7 +73,13 @@ async def generate_7_way(model: str, content: str) -> dict:
     }
 
     results = {}
+    total = len(prompts)
+    count = 0
     for key, (sys_prompt, use_json) in prompts.items():
+        count += 1
+        # Yield progress
+        yield f"data: {json.dumps({'status': 'progress', 'step': count, 'total': total, 'current_task': f'Generating {key.replace('_', ' ').title()}'})}\n\n"
+        
         results[key] = await _generate(model, sys_prompt, content, use_json)
         
-    return results
+    yield f"data: {json.dumps({'status': 'complete', 'results': results})}\n\n"

@@ -31,8 +31,30 @@ export function HeroSection() {
         setStatusText("Driving 7-Way AI Generation...")
         setIsGenerating(true)
         
-        await fetch(`http://localhost:8000/generate/${data.id}`, { method: "POST" })
-        setStatusText("Complete!")
+        const genRes = await fetch(`http://localhost:8000/generate/${data.id}`, { method: "POST" })
+        if (genRes.body) {
+            const reader = genRes.body.getReader()
+            const decoder = new TextDecoder()
+            while (true) {
+                const { done, value } = await reader.read()
+                if (done) break
+                const chunk = decoder.decode(value)
+                const lines = chunk.split("\n")
+                for (const line of lines) {
+                    if (line.startsWith("data: ")) {
+                        try {
+                            const parsed = JSON.parse(line.replace("data: ", ""))
+                            if (parsed.status === "progress") {
+                                setStatusText(`[${parsed.step}/${parsed.total}] ${parsed.current_task}...`)
+                            } else if (parsed.status === "complete") {
+                                setStatusText("Complete!")
+                            }
+                        } catch (e) {}
+                    }
+                }
+            }
+        }
+        
         setTimeout(() => {
             setIsUploading(false)
             setIsGenerating(false)

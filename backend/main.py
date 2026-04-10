@@ -1,5 +1,6 @@
 from fastapi import FastAPI, Depends, UploadFile, File, Form, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse, FileResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 import shutil
@@ -7,10 +8,12 @@ import tempfile
 import json
 import os
 import httpx
+import psutil
+import zipfile
 
 import models, database
 from services.extractors import extract_text_from_pdf, extract_text_from_youtube, extract_text_from_audio
-from services.ollama_bridge import generate_7_way
+from services.ollama_bridge import generate_7_way_stream
 from services.tts import generate_tts_wav
 from services import vector_store
 
@@ -97,24 +100,29 @@ async def generate_study_material(study_set_id: int, background_tasks: Backgroun
     if not study_set:
         raise HTTPException(status_code=404, detail="Study set not found")
         
-    # Schedule vector DB indexing in background
     background_tasks.add_task(vector_store.index_document, study_set_id, study_set.original_content)
         
     setting = db.query(models.Setting).filter(models.Setting.key == "ollama_model").first()
     model = setting.value if setting else "llama3.1"
     
-    results = await generate_7_way(model, study_set.original_content)
-    
-    # Save the JSON back to db
-    study_set.generated_json = json.dumps(results)
-    db.commit()
-    
-    # TTS Podcast Synthesis
-    if "podcast" in results and isinstance(results["podcast"], str):
-        podcast_path = f"./podcast_{study_set.id}.wav"
-        generate_tts_wav(results["podcast"], podcast_path)
-        
-    return {"status": "success", "study_set_id": study_set_id}
+    async def sse_generator():
+        final_results = None
+        async for chunk in generate_7_way_stream(model, study_set.original_content):
+            if '"status": "complete"' in chunk:
+                try:
+                    parsed = json.loads(chunk.replace("data: ", ""))
+                    final_results = parsed.get("results")
+                except: pass
+            yield chunk
+            
+        if final_results:
+            study_set.generated_json = json.dumps(final_results)
+            db.commit()
+            if "podcast" in final_results and isinstance(final_results["podcast"], str):
+                podcast_path = f"./podcast_{study_set.id}.wav"
+                generate_tts_wav(final_results["podcast"], podcast_path)
+
+    return StreamingResponse(sse_generator(), media_type="text/event-stream")
 
 @app.get("/settings")
 def get_settings(db: Session = Depends(database.get_db)):
@@ -189,3 +197,43 @@ def update_flashcard_progress(study_set_id: int, req: ProgressRequest, db: Sessi
         db.add(progress)
     db.commit()
     return {"status": "success"}
+
+class PullRequest(BaseModel):
+    model: str
+
+@app.get("/system-health")
+def get_system_health():
+    ram = psutil.virtual_memory()
+    total_ram_gb = ram.total / (1024 ** 3)
+    recommended_model = "llama3.1"
+    if total_ram_gb < 8:
+        recommended_model = "phi3"
+    elif total_ram_gb <= 16:
+        recommended_model = "mistral"
+
+    return {
+        "ram_gb": round(total_ram_gb, 2),
+        "usage_percent": ram.percent,
+        "recommended_model": recommended_model
+    }
+
+@app.post("/pull-model")
+async def pull_model_endpoint(req: PullRequest):
+    async with httpx.AsyncClient(timeout=600) as client:
+        try:
+            res = await client.post("http://localhost:11434/api/pull", json={"name": req.model, "stream": False})
+            res.raise_for_status()
+            return {"status": "success", "message": f"Successfully pulled {req.model}"}
+        except Exception as e:
+            return {"status": "error", "message": str(e)}
+
+@app.get("/backup")
+def backup_database():
+    zip_path = "localmind_backup.zip"
+    try:
+        with zipfile.ZipFile(zip_path, 'w') as zf:
+            if os.path.exists("localmind.db"):
+                zf.write("localmind.db")
+        return FileResponse(zip_path, media_type="application/zip", filename="localmind_backup.zip")
+    except Exception as e:
+        return {"error": str(e)}

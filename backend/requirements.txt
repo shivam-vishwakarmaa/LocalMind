@@ -9,3 +9,4 @@ pydantic
 httpx
 pyttsx3
 chromadb
+psutil
