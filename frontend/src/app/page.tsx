@@ -9,6 +9,7 @@ import { Download, DatabaseBackup, Loader2 } from "lucide-react"
 import { exportToMarkdown, exportToCSV } from "@/lib/export-utils"
 import { cn } from "@/lib/utils"
 import { AnimatePresence, motion } from "framer-motion"
+import { DueTodayWidget } from "@/components/dashboard/due-today"
 
 const tabs = ["Notes", "Flashcards", "Quiz", "Short Answer", "Key Terms", "Podcast"]
 
@@ -45,6 +46,8 @@ export default function Home() {
     <div className="p-8 max-w-[1400px] mx-auto space-y-12 animate-in fade-in duration-500">
       <HeroSection />
       
+      <DueTodayWidget />
+
       <div className="space-y-8">
         <div className="border-b border-white/10 flex justify-between items-center">
             <nav className="-mb-px flex space-x-8 overflow-x-auto">

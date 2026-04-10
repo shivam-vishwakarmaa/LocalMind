@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, ForeignKey, DateTime
+from sqlalchemy import Column, Integer, String, Text, ForeignKey, DateTime, Float
 from sqlalchemy.orm import relationship
 import datetime
 from database import Base
@@ -38,5 +38,12 @@ class FlashcardProgress(Base):
     id = Column(Integer, primary_key=True, index=True)
     study_set_id = Column(Integer, ForeignKey("study_sets.id"), index=True)
     card_index = Column(Integer)
-    status = Column(String)  # 'easy', 'hard', etc.
+    
+    # SM-2 Algorithm Fields
+    ease_factor = Column(Float, default=2.5)
+    interval = Column(Integer, default=0)
+    repetitions = Column(Integer, default=0)
+    next_review_date = Column(DateTime, default=datetime.datetime.utcnow)
+    
+    status = Column(String)  # string representation (easy, hard, etc.)
     updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)

@@ -26,6 +26,7 @@ class ChatRequest(BaseModel):
 class ProgressRequest(BaseModel):
     card_index: int
     status: str
+    grade: int
 
 # Create tables
 models.Base.metadata.create_all(bind=database.engine)
@@ -186,14 +187,30 @@ async def clarify_text(req: ClarifyRequest, db: Session = Depends(database.get_d
 
 @app.post("/flashcards/{study_set_id}/progress")
 def update_flashcard_progress(study_set_id: int, req: ProgressRequest, db: Session = Depends(database.get_db)):
+    from services.sm2 import calculate_sm2
     progress = db.query(models.FlashcardProgress).filter(
         models.FlashcardProgress.study_set_id == study_set_id,
         models.FlashcardProgress.card_index == req.card_index
     ).first()
+    
     if progress:
+        ef, interval, rep, nrd = calculate_sm2(req.grade, progress.ease_factor, progress.interval, progress.repetitions)
+        progress.ease_factor = ef
+        progress.interval = interval
+        progress.repetitions = rep
+        progress.next_review_date = nrd
         progress.status = req.status
     else:
-        progress = models.FlashcardProgress(study_set_id=study_set_id, card_index=req.card_index, status=req.status)
+        ef, interval, rep, nrd = calculate_sm2(req.grade, 2.5, 0, 0)
+        progress = models.FlashcardProgress(
+            study_set_id=study_set_id, 
+            card_index=req.card_index, 
+            status=req.status,
+            ease_factor=ef,
+            interval=interval,
+            repetitions=rep,
+            next_review_date=nrd
+        )
         db.add(progress)
     db.commit()
     return {"status": "success"}
@@ -237,3 +254,51 @@ def backup_database():
         return FileResponse(zip_path, media_type="application/zip", filename="localmind_backup.zip")
     except Exception as e:
         return {"error": str(e)}
+
+@app.get("/due-today")
+def get_due_today(db: Session = Depends(database.get_db)):
+    from datetime import datetime
+    import json
+    now = datetime.utcnow()
+    
+    due_logs = db.query(models.FlashcardProgress).filter(
+        models.FlashcardProgress.next_review_date <= now
+    ).all()
+    
+    due_cards = []
+    set_cache = {}
+    for log in due_logs:
+        if log.study_set_id not in set_cache:
+            st = db.query(models.StudySet).filter(models.StudySet.id == log.study_set_id).first()
+            if st and st.generated_json:
+                try:
+                    js = json.loads(st.generated_json)
+                    set_cache[log.study_set_id] = js.get("flashcards", [])
+                except:
+                    set_cache[log.study_set_id] = []
+            else:
+                set_cache[log.study_set_id] = []
+                
+        cards = set_cache[log.study_set_id]
+        if log.card_index < len(cards):
+            card_data = cards[log.card_index]
+            due_cards.append({
+                "study_set_id": log.study_set_id,
+                "card_index": log.card_index,
+                "front": card_data.get("front"),
+                "back": card_data.get("back")
+            })
+            
+    return {"due": due_cards}
+
+@app.get("/local-ip")
+def get_local_ip():
+    import socket
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        ip = s.getsockname()[0]
+        s.close()
+        return {"ip": ip}
+    except Exception:
+        return {"ip": "127.0.0.1"}

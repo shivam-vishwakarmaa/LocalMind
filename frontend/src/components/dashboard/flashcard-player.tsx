@@ -1,32 +1,40 @@
 "use client"
 import { useState } from "react"
 import { cn } from "@/lib/utils"
-import { Check, X } from "lucide-react"
+import { X, Check, Frown, Sparkles } from "lucide-react"
 
-export function FlashcardPlayer({ studySetId, flashcards }: { studySetId: number, flashcards: any[] }) {
+export function FlashcardPlayer({ 
+    studySetId, 
+    flashcards, 
+    isGlobalReview = false 
+}: { 
+    studySetId?: number, 
+    flashcards: any[],
+    isGlobalReview?: boolean 
+}) {
     const [currentIndex, setCurrentIndex] = useState(0)
     const [isFlipped, setIsFlipped] = useState(false)
     
     if (!flashcards || flashcards.length === 0) return <div className="text-muted-foreground p-8 text-center border border-dashed border-border rounded-xl">No flashcards generated yet.</div>
-    
+    if (currentIndex >= flashcards.length) return <div className="text-emerald-400 font-medium p-8 text-center border border-dashed border-emerald-500/30 bg-emerald-500/10 rounded-xl">Deck Complete! Great Work.</div>
+
     const card = flashcards[currentIndex]
     
-    const handleScore = async (status: 'easy' | 'hard') => {
+    // Resolve dynamic IDs if mapped globally
+    const currentStudySetId = isGlobalReview ? card.study_set_id : studySetId
+    const currentCardIndex = isGlobalReview ? card.card_index : currentIndex
+
+    const handleScore = async (status: string, grade: number) => {
         try {
-            await fetch(`http://localhost:8000/flashcards/${studySetId}/progress`, {
+            await fetch(`http://localhost:8000/flashcards/${currentStudySetId}/progress`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ card_index: currentIndex, status })
+                body: JSON.stringify({ card_index: currentCardIndex, status, grade })
             })
         } catch(e) {}
         
         setIsFlipped(false)
-        if (currentIndex < flashcards.length - 1) {
-            // Little delay to allow flip animation to reset
-            setTimeout(() => setCurrentIndex(currentIndex + 1), 200)
-        } else {
-            alert("Great job! You've reached the end of the deck.")
-        }
+        setTimeout(() => setCurrentIndex(currentIndex + 1), 200)
     }
     
     return (
@@ -55,12 +63,22 @@ export function FlashcardPlayer({ studySetId, flashcards }: { studySetId: number
                 </div>
             </div>
             
-            <div className={cn("mt-8 flex gap-4 w-full transition-all duration-300", isFlipped ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4 pointer-events-none")}>
-                <button onClick={(e) => { e.stopPropagation(); handleScore('hard'); }} className="flex-1 py-3 rounded-lg bg-red-500/10 text-red-500 hover:bg-red-500/20 border border-red-500/20 flex justify-center items-center gap-2 transition-colors font-medium">
-                    <X className="w-4 h-4" /> Hard
+            <div className={cn("mt-8 flex md:flex-row flex-col gap-3 w-full transition-all duration-300", isFlipped ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4 pointer-events-none")}>
+                <button onClick={(e) => { e.stopPropagation(); handleScore('again', 0); }} className="flex-1 py-3 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 flex flex-col justify-center items-center gap-1 transition-colors font-medium">
+                    <span className="flex items-center gap-1"><X className="w-4 h-4"/> Again</span>
+                    <span className="text-[10px] opacity-70">1 min</span>
                 </button>
-                <button onClick={(e) => { e.stopPropagation(); handleScore('easy'); }} className="flex-1 py-3 rounded-lg bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/20 flex justify-center items-center gap-2 transition-colors font-medium">
-                    <Check className="w-4 h-4" /> Easy
+                <button onClick={(e) => { e.stopPropagation(); handleScore('hard', 2); }} className="flex-1 py-3 rounded-lg bg-orange-500/10 hover:bg-orange-500/20 text-orange-400 border border-orange-500/20 flex flex-col justify-center items-center gap-1 transition-colors font-medium">
+                    <span className="flex items-center gap-1"><Frown className="w-4 h-4"/> Hard</span>
+                    <span className="text-[10px] opacity-70">1 day</span>
+                </button>
+                <button onClick={(e) => { e.stopPropagation(); handleScore('good', 4); }} className="flex-1 py-3 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 flex flex-col justify-center items-center gap-1 transition-colors font-medium">
+                    <span className="flex items-center gap-1"><Check className="w-4 h-4"/> Good</span>
+                    <span className="text-[10px] opacity-70">3 days</span>
+                </button>
+                <button onClick={(e) => { e.stopPropagation(); handleScore('easy', 5); }} className="flex-1 py-3 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/20 flex flex-col justify-center items-center gap-1 transition-colors font-medium">
+                    <span className="flex items-center gap-1"><Sparkles className="w-4 h-4"/> Easy</span>
+                    <span className="text-[10px] opacity-70">7 days+</span>
                 </button>
             </div>
         </div>

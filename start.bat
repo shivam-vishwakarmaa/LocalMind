@@ -21,7 +21,7 @@ if not exist "venv" (
 ) else (
     call .\venv\Scripts\activate
 )
-start "LocalMind Backend" cmd /k "uvicorn main:app --reload"
+start "LocalMind Backend" cmd /k "uvicorn main:app --host 0.0.0.0 --reload"
 cd ..
 
 echo [3/3] Booting Next.js UI Application...
@@ -30,7 +30,7 @@ if not exist "node_modules" (
     echo "Installing frontend dependencies..."
     call npm install
 )
-start "LocalMind Frontend" cmd /k "npm run dev"
+start "LocalMind Frontend" cmd /k "npm run dev -- -H 0.0.0.0"
 cd ..
 
 echo ==============================================
