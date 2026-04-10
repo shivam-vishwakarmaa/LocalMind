@@ -8,3 +8,4 @@ faster-whisper==1.0.0
 pydantic==2.6.1
 httpx==0.26.0
 pyttsx3==2.90
+chromadb==0.4.22
