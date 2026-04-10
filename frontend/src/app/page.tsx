@@ -10,8 +10,9 @@ import { exportToMarkdown, exportToCSV } from "@/lib/export-utils"
 import { cn } from "@/lib/utils"
 import { AnimatePresence, motion } from "framer-motion"
 import { DueTodayWidget } from "@/components/dashboard/due-today"
+import { KnowledgeGraph } from "@/components/dashboard/knowledge-graph"
 
-const tabs = ["Notes", "Flashcards", "Quiz", "Short Answer", "Key Terms", "Podcast"]
+const tabs = ["Notes", "Flashcards", "Quiz", "Short Answer", "Key Terms", "Podcast", "Knowledge Graph"]
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState(tabs[0])
@@ -119,9 +120,11 @@ export default function Home() {
                             </div>
                         </div>
                     )}
+
+                    {activeTab === "Knowledge Graph" && <KnowledgeGraph />}
                     
                     {/* Fallback for other tabs - Show Skeleton Loader to simulate DB fetching */}
-                    {!["Flashcards", "Quiz", "Notes"].includes(activeTab) && (
+                    {!["Flashcards", "Quiz", "Notes", "Knowledge Graph"].includes(activeTab) && (
                          <div className="w-full max-w-4xl mx-auto space-y-4">
                              <div className="h-8 bg-white/5 animate-pulse rounded-md w-1/3 mb-8"></div>
                              <div className="h-24 bg-white/5 animate-pulse rounded-xl w-full"></div>

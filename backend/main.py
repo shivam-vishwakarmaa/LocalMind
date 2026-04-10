@@ -302,3 +302,31 @@ def get_local_ip():
         return {"ip": ip}
     except Exception:
         return {"ip": "127.0.0.1"}
+
+@app.get("/graph")
+def get_knowledge_graph(db: Session = Depends(database.get_db)):
+    folders = db.query(models.Folder).all()
+    study_sets = db.query(models.StudySet).all()
+    
+    nodes = [{"id": "root", "name": "LocalMind Vault", "val": 4, "color": "#a855f7"}]
+    links = []
+    
+    for folder in folders:
+        f_id = f"f_{folder.id}"
+        nodes.append({"id": f_id, "name": folder.name, "val": 3, "color": "#3b82f6"})
+        links.append({"source": "root", "target": f_id})
+        
+    for st in study_sets:
+        s_id = f"s_{st.id}"
+        nodes.append({"id": s_id, "name": st.title, "val": 2, "color": "#10b981"})
+        target = f"f_{st.folder_id}" if st.folder_id else "root"
+        links.append({"source": target, "target": s_id})
+        
+        for other in study_sets:
+            if st.id != other.id:
+                w1 = set([w.lower() for w in st.title.split() if len(w) > 4])
+                w2 = set([w.lower() for w in other.title.split() if len(w) > 4])
+                if w1.intersection(w2):
+                    links.append({"source": s_id, "target": f"s_{other.id}"})
+    
+    return {"nodes": nodes, "links": links}

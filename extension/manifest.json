@@ -1,0 +1,11 @@
+{
+  "manifest_version": 3,
+  "name": "LocalMind Clipper",
+  "version": "1.0",
+  "description": "Send text directly to your offline LocalMind AI.",
+  "permissions": ["contextMenus", "activeTab", "scripting"],
+  "host_permissions": ["http://localhost:8000/"],
+  "background": {
+    "service_worker": "background.js"
+  }
+}
