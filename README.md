@@ -70,6 +70,10 @@ The server will begin running at `http://localhost:8000`. Simply spinning up the
 ## Core Features (Roadmap)
 - [x] **Premium UI Shell**: Advanced dark-mode aesthetics using Tailwind utility classes.
 - [x] **Local Storage Setup**: Robust SQLite relational storage.
-- [ ] **Document Parsing**: Local extraction from uploaded PDFs and Word Docs.
-- [ ] **Generative Flashcards**: AI/LLM integration to spin up quiz materials locally.
-- [ ] **Offline Podcasts**: Text-to-Speech generation summarizing study units.
+- [x] **File Processing Engine**: Extract text from PDFs and YouTube links (via Faster-Whisper transcription).
+- [x] **Ollama Integration**: Seamless connection to local LLMs for structured study material generation.
+- [x] **7-Way Generator**: Instant creation of Notes, Flashcards, Quizzes, and more.
+- [x] **Hardware Settings**: Toggle between different Ollama models directly from the UI.
+- [x] **Podcast Synthesis**: Local TTS generation for audio summaries.
+- [ ] **Folder Management**: Complete folder CRUD operations.
+- [ ] **Offline Auth**: Local user profiles.
