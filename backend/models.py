@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, String, Text, ForeignKey, DateTime
 from sqlalchemy.orm import relationship
 import datetime
-from .database import Base
+from database import Base
 
 class Folder(Base):
     __tablename__ = "folders"
